@@ -1,0 +1,17 @@
+{
+  "name": "colour-tap",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "mkdir -p ./dist && rm -rf ./dist/*",
+    "build": "npm run clean && browserify ./index.js --standalone COLOURTAP -t babelify -o ./dist/colour-tap.js"
+  },
+  "author": "Jason A. Storey <jason.andrew.storey@gmail.com> (https://github.com/JasonStorey)",
+  "license": "MIT",
+  "devDependencies": {
+    "babelify": "^6.1.3",
+    "browserify": "^11.0.1"
+  }
+}
