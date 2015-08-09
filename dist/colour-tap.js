@@ -95,8 +95,10 @@ function Tapper() {
             return tapperInstance;
         },
         addEventListeners: function addEventListeners() {
-            domUtils.on(tapperElem, 'click', function (event) {
-                return emitter.emit('tapped', tapperInstance);
+            domUtils.on(tapperElem, 'click touchstart', function (event) {
+                event.stopPropagation();
+                event.preventDefault();
+                emitter.emit('tapped', tapperInstance);
             });
 
             return tapperInstance;
