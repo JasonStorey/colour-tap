@@ -1,3 +1,7 @@
+let colourTap = require('./lib/colour-tap');
+
 module.exports = {
-    init: () => console.log('hello, buddy')
+    init: config => {
+        colourTap.init(config);
+    }
 };
