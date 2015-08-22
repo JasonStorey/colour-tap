@@ -12,43 +12,146 @@ module.exports = {
 },{"./lib/colour-tap":2}],2:[function(require,module,exports){
 'use strict';
 
-var utils = require('./utils');
+var levels = require('./levels');
 var Target = require('./target');
 var Tapper = require('./tapper');
+var Timer = require('./timer');
+var display = require('./display');
 
-function drawTarget(container, colour) {
-    return Target.create().setColour(colour).draw(container);
+var timer = undefined;
+var target = undefined;
+var tapper = undefined;
+
+var currentLevel = 0;
+
+var colourRangeArray = undefined;
+var tapsUntilTarget = undefined;
+
+function drawDisplay(container) {
+    return display.init().draw(container);
 }
 
-function drawTapper(container, colour) {
-    return Tapper.create().setColour(colour).draw(container);
+function drawTarget(container) {
+    return Target.create().draw(container);
+}
+
+function drawTapper(container) {
+    return Tapper.create().draw(container);
+}
+
+function drawTimer(container) {
+    return Timer.create().draw(container);
+}
+
+function win() {
+    currentLevel++;
+    display.setScore(currentLevel);
+    display.win();
+    reset();
+    startLevel(levels.getLevel(currentLevel));
+}
+
+function lose() {
+    display.lose('You scored #' + currentLevel + ', buddy');
+    reset();
+}
+
+function onTapped(tapper) {
+    var newColour = colourRangeArray[colourRangeArray.length - tapsUntilTarget] || '#000000';
+    tapsUntilTarget--;
+    tapper.setColour(newColour);
+}
+
+function onTimerComplete(timer) {
+    if (tapsUntilTarget === 0) {
+        win();
+    } else {
+        lose();
+    }
+}
+
+function onColourUpdate(colour) {
+    if (tapsUntilTarget < 0) {
+        lose();
+    }
+}
+
+function reset() {
+    display.update();
+    timer.reset().getEmitter().removeListener('complete', onTimerComplete);
+
+    tapper.getEmitter().removeListener('tapped', onTapped).removeListener('colour-update', onColourUpdate);
+}
+
+function startLevel(levelConfig) {
+    colourRangeArray = levelConfig.colourRangeArray;
+    tapsUntilTarget = levelConfig.colourRangeArray.length - 1;
+
+    target.setColour(colourRangeArray[colourRangeArray.length - 1]);
+    tapper.setColour(colourRangeArray[0]);
+
+    timer.setTimer(levelConfig.timer).getEmitter().on('complete', onTimerComplete);
+
+    tapper.getEmitter().on('tapped', onTapped).on('colour-update', onColourUpdate);
+
+    timer.start();
 }
 
 module.exports = {
     init: function init(config) {
-        var targetColour = utils.getRandomHex();
-        var startColour = utils.getRandomHex();
-        var colourDiff = 0.8;
 
-        var target = drawTarget(config.container, targetColour);
-        var tapper = drawTapper(config.container, startColour);
+        drawDisplay(config.container);
 
-        function onTapped(tapper) {
-            var newColour = utils.shadeBlend(colourDiff, targetColour, startColour);
-            tapper.setColour(newColour);
-            colourDiff -= 0.2;
-        }
+        timer = drawTimer(config.container);
+        target = drawTarget(config.container);
+        tapper = drawTapper(config.container);
 
-        tapper.getEmitter().on('tapped', onTapped).on('colour-update', function (colour) {
-            if (colour === targetColour) {
-                alert('congrats, buddy');
-                tapper.getEmitter().removeListener('tapped', onTapped);
-            }
-        });
+        startLevel(levels.getLevel(currentLevel));
     }
 };
 
-},{"./tapper":4,"./target":5,"./utils":6}],3:[function(require,module,exports){
+},{"./display":3,"./levels":5,"./tapper":6,"./target":7,"./timer":8}],3:[function(require,module,exports){
+'use strict';
+
+var domUtils = require('./dom-utils');
+
+var displayElem = undefined;
+var score = 0;
+var displayContent = 'Score : #' + (score + 1);
+
+var displayInstance = {
+    init: function init() {
+        displayElem = domUtils.createElement('div');
+        domUtils.addClass(displayElem, 'display');
+        domUtils.html(displayElem, displayContent);
+        return displayInstance;
+    },
+    draw: function draw(container) {
+        domUtils.appendChild(container, displayElem);
+        return displayInstance;
+    },
+    setScore: function setScore(newScore) {
+        score = newScore;
+        displayContent = 'Score : #' + (score + 1);
+        return displayInstance;
+    },
+    win: function win() {
+        displayContent = 'Score : #' + (score + 1) + ' - Nize.';
+        return displayInstance;
+    },
+    lose: function lose() {
+        displayContent = 'Score : #' + (score + 1) + ' - You screwed up, buddy.';
+        return displayInstance;
+    },
+    update: function update() {
+        domUtils.html(displayElem, displayContent);
+        return displayInstance;
+    }
+};
+
+module.exports = displayInstance;
+
+},{"./dom-utils":4}],4:[function(require,module,exports){
 'use strict';
 
 var $ = require('jquery');
@@ -68,10 +171,44 @@ module.exports = {
     },
     on: function on(element, eventname, listener) {
         return $(element).on(eventname, listener);
+    },
+    html: function html(element, htmlString) {
+        return $(element).html(htmlString);
     }
 };
 
-},{"jquery":8}],4:[function(require,module,exports){
+},{"jquery":11}],5:[function(require,module,exports){
+'use strict';
+
+var utils = require('./utils');
+
+var DIFFICULTIES = [{
+    timer: 5000,
+    possibleStepsInColourRange: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+}];
+
+function getColourRangeArray(startColour, targetColour, totalSteps) {
+    var colourRangeArray = totalSteps > 0 ? [startColour] : [targetColour];
+
+    for (var step = totalSteps; step > 0; step--) {
+        colourRangeArray.push(utils.shadeBlend((step - 1) / totalSteps, targetColour, startColour));
+    }
+
+    return colourRangeArray;
+}
+
+module.exports = {
+    getLevel: function getLevel(levelIndex) {
+        var stepsInColourRange = utils.randomFromArray(DIFFICULTIES[0].possibleStepsInColourRange);
+
+        return {
+            timer: DIFFICULTIES[0].timer,
+            colourRangeArray: getColourRangeArray(utils.getRandomHex(), utils.getRandomHex(), stepsInColourRange)
+        };
+    }
+};
+
+},{"./utils":9}],6:[function(require,module,exports){
 'use strict';
 
 var events = require('events');
@@ -84,7 +221,6 @@ function Tapper() {
     var emitter = new events.EventEmitter();
 
     var colour = utils.getRandomHex();
-    var shadeChange = Math.random() > 0.5 ? 0.2 : -0.2;
 
     tapperInstance = {
         init: function init() {
@@ -113,6 +249,9 @@ function Tapper() {
 
             return tapperInstance;
         },
+        getColour: function getColour() {
+            return colour;
+        },
         draw: function draw(container) {
             domUtils.appendChild(container, tapperElem);
 
@@ -132,7 +271,7 @@ module.exports = {
     }
 };
 
-},{"./dom-utils":3,"./utils":6,"events":7}],5:[function(require,module,exports){
+},{"./dom-utils":4,"./utils":9,"events":10}],7:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -174,7 +313,95 @@ module.exports = {
     }
 };
 
-},{"./dom-utils":3,"./utils":6}],6:[function(require,module,exports){
+},{"./dom-utils":4,"./utils":9}],8:[function(require,module,exports){
+'use strict';
+
+var domUtils = require('./dom-utils');
+var utils = require('./utils');
+var events = require('events');
+
+function Timer() {
+    var timerInstance = undefined;
+    var timerElem = undefined;
+    var fillerElem = undefined;
+    var emitter = new events.EventEmitter();
+
+    var ms = 1000;
+    var started = false;
+    var startTime = null;
+
+    timerInstance = {
+        init: function init() {
+            timerElem = domUtils.createElement('div');
+            fillerElem = domUtils.createElement('div');
+            domUtils.addClass(timerElem, 'timer');
+            domUtils.addClass(fillerElem, 'filler');
+
+            return timerInstance;
+        },
+        draw: function draw(container) {
+            domUtils.appendChild(container, timerElem);
+            domUtils.appendChild(timerElem, fillerElem);
+            return timerInstance;
+        },
+        setTimer: function setTimer(msToSet) {
+            ms = msToSet;
+            return timerInstance;
+        },
+        start: function start() {
+            started = true;
+            utils.requestAnimFrame(timerInstance.animate);
+            return timerInstance;
+        },
+        stop: function stop() {
+            started = false;
+            startTime = null;
+            return timerInstance;
+        },
+        reset: function reset() {
+            timerInstance.stop();
+            domUtils.css(fillerElem, { 'width': '0%' });
+            return timerInstance;
+        },
+        animate: function animate(timestamp) {
+            var progress = undefined;
+
+            if (!started) {
+                return;
+            }
+
+            if (!startTime) {
+                startTime = timestamp;
+            }
+
+            progress = timestamp - startTime;
+
+            domUtils.css(fillerElem, { 'width': Math.min(Math.floor(progress / ms * 100), 100) + '%' });
+
+            if (progress <= ms) {
+                utils.requestAnimFrame(timerInstance.animate);
+            } else {
+                timerInstance.stop();
+                emitter.emit('complete', timerInstance);
+            }
+
+            return timerInstance;
+        },
+        getEmitter: function getEmitter() {
+            return emitter;
+        }
+    };
+
+    return timerInstance;
+}
+
+module.exports = {
+    create: function create() {
+        return Timer().init();
+    }
+};
+
+},{"./dom-utils":4,"./utils":9,"events":10}],9:[function(require,module,exports){
 "use strict";
 
 module.exports = {
@@ -202,10 +429,18 @@ module.exports = {
     },
     getRandomHex: function getRandomHex() {
         return '#' + ('000000' + (Math.random() * 0xFFFFFF << 0).toString(16)).slice(-6);
+    },
+    requestAnimFrame: function requestAnimFrame(timestamp) {
+        return (window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function (callback) {
+            window.setTimeout(callback, 1000 / 60);
+        })(timestamp);
+    },
+    randomFromArray: function randomFromArray(array) {
+        return array[Math.floor(Math.random() * array.length)];
     }
 };
 
-},{}],7:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -508,7 +743,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],8:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.4
  * http://jquery.com/
