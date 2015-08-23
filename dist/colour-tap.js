@@ -199,11 +199,18 @@ function getColourRangeArray(startColour, targetColour, totalSteps) {
 
 module.exports = {
     getLevel: function getLevel(levelIndex) {
-        var stepsInColourRange = utils.randomFromArray(DIFFICULTIES[0].possibleStepsInColourRange);
+        var stepsInColourRange = utils.randomFromArray(DIFFICULTIES[0].possibleStepsInColourRange),
+            startColour = utils.getRandomHex(),
+            targetColour = utils.getRandomHex(),
+            minColourDiff = stepsInColourRange * 0.05;
+
+        while (utils.calculateColourDiff(startColour, targetColour) <= minColourDiff) {
+            startColour = utils.getRandomHex();
+        }
 
         return {
             timer: DIFFICULTIES[0].timer,
-            colourRangeArray: getColourRangeArray(utils.getRandomHex(), utils.getRandomHex(), stepsInColourRange)
+            colourRangeArray: getColourRangeArray(startColour, targetColour, stepsInColourRange)
         };
     }
 };
@@ -428,7 +435,19 @@ module.exports = {
         }
     },
     getRandomHex: function getRandomHex() {
-        return '#' + ('000000' + (Math.random() * 0xFFFFFF << 0).toString(16)).slice(-6);
+        return '#' + ('000000' + Math.floor(Math.random() * 0xFFFFFF).toString(16)).slice(-6);
+    },
+    calculateColourDiff: function calculateColourDiff(hex1, hex2) {
+        var colour1 = parseInt(hex1.slice(1), 16),
+            r1 = colour1 >> 16,
+            g1 = colour1 >> 8 & 0x00FF,
+            b1 = colour1 & 0x0000FF,
+            colour2 = parseInt(hex2.slice(1), 16),
+            r2 = colour2 >> 16,
+            g2 = colour2 >> 8 & 0x00FF,
+            b2 = colour2 & 0x0000FF;
+
+        return Math.abs(r1 - r2 + (g1 - g2) + (b1 - b2)) / 765;
     },
     requestAnimFrame: function requestAnimFrame(timestamp) {
         return (window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function (callback) {
