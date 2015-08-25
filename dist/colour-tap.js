@@ -17,6 +17,7 @@ var Target = require('./target');
 var Tapper = require('./tapper');
 var Timer = require('./timer');
 var display = require('./display');
+var utils = require('./utils');
 
 var timer = undefined;
 var target = undefined;
@@ -26,6 +27,7 @@ var currentLevel = 0;
 
 var colourRangeArray = undefined;
 var tapsUntilTarget = undefined;
+var startColour = utils.getRandomHex();
 
 function drawDisplay(container) {
     return display.init().draw(container);
@@ -48,7 +50,7 @@ function win() {
     display.setScore(currentLevel);
     display.win();
     reset();
-    startLevel(levels.getLevel(currentLevel));
+    startLevel(levels.getLevel(startColour, currentLevel));
 }
 
 function lose() {
@@ -84,6 +86,7 @@ function reset() {
 }
 
 function startLevel(levelConfig) {
+    startColour = levelConfig.colourRangeArray[levelConfig.colourRangeArray.length - 1];
     colourRangeArray = levelConfig.colourRangeArray;
     tapsUntilTarget = levelConfig.colourRangeArray.length - 1;
 
@@ -106,11 +109,11 @@ module.exports = {
         target = drawTarget(config.container);
         tapper = drawTapper(config.container);
 
-        startLevel(levels.getLevel(currentLevel));
+        startLevel(levels.getLevel(startColour, currentLevel));
     }
 };
 
-},{"./display":3,"./levels":5,"./tapper":6,"./target":7,"./timer":8}],3:[function(require,module,exports){
+},{"./display":3,"./levels":5,"./tapper":6,"./target":7,"./timer":8,"./utils":9}],3:[function(require,module,exports){
 'use strict';
 
 var domUtils = require('./dom-utils');
@@ -198,14 +201,13 @@ function getColourRangeArray(startColour, targetColour, totalSteps) {
 }
 
 module.exports = {
-    getLevel: function getLevel(levelIndex) {
+    getLevel: function getLevel(startColour, levelIndex) {
         var stepsInColourRange = utils.randomFromArray(DIFFICULTIES[0].possibleStepsInColourRange),
-            startColour = utils.getRandomHex(),
             targetColour = utils.getRandomHex(),
             minColourDiff = stepsInColourRange * 0.05;
 
         while (utils.calculateColourDiff(startColour, targetColour) <= minColourDiff) {
-            startColour = utils.getRandomHex();
+            targetColour = utils.getRandomHex();
         }
 
         return {
