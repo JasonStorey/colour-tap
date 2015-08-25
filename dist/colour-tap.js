@@ -191,7 +191,7 @@ var DIFFICULTIES = [{
 }];
 
 function getColourRangeArray(startColour, targetColour, totalSteps) {
-    var colourRangeArray = totalSteps > 0 ? [startColour] : [targetColour];
+    var colourRangeArray = [startColour];
 
     for (var step = totalSteps; step > 0; step--) {
         colourRangeArray.push(utils.shadeBlend((step - 1) / totalSteps, targetColour, startColour));
