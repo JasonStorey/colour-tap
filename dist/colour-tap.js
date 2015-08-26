@@ -187,7 +187,28 @@ var utils = require('./utils');
 
 var DIFFICULTIES = [{
     timer: 5000,
-    possibleStepsInColourRange: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    possibleStepsInColourRange: [1, 2, 3, 3, 4, 4],
+    minColourDiff: 0.12
+}, {
+    timer: 5000,
+    possibleStepsInColourRange: [0, 1, 2, 3, 3, 4, 4, 4, 5, 5, 5],
+    minColourDiff: 0.09
+}, {
+    timer: 5000,
+    possibleStepsInColourRange: [0, 1, 2, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6],
+    minColourDiff: 0.08
+}, {
+    timer: 5000,
+    possibleStepsInColourRange: [0, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7],
+    minColourDiff: 0.07
+}, {
+    timer: 5000,
+    possibleStepsInColourRange: [0, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8],
+    minColourDiff: 0.06
+}, {
+    timer: 5000,
+    possibleStepsInColourRange: [0, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9],
+    minColourDiff: 0.054
 }];
 
 function getColourRangeArray(startColour, targetColour, totalSteps) {
@@ -202,16 +223,17 @@ function getColourRangeArray(startColour, targetColour, totalSteps) {
 
 module.exports = {
     getLevel: function getLevel(startColour, levelIndex) {
-        var stepsInColourRange = utils.randomFromArray(DIFFICULTIES[0].possibleStepsInColourRange),
+        var difficulty = DIFFICULTIES[Math.floor(levelIndex / 7)] || DIFFICULTIES[DIFFICULTIES.length - 1];
+        var stepsInColourRange = utils.randomFromArray(difficulty.possibleStepsInColourRange),
             targetColour = utils.getRandomHex(),
-            minColourDiff = stepsInColourRange * 0.05;
+            minColourDiff = stepsInColourRange * difficulty.minColourDiff;
 
         while (utils.calculateColourDiff(startColour, targetColour) <= minColourDiff) {
             targetColour = utils.getRandomHex();
         }
 
         return {
-            timer: DIFFICULTIES[0].timer,
+            timer: difficulty.timer - levelIndex * 50,
             colourRangeArray: getColourRangeArray(startColour, targetColour, stepsInColourRange)
         };
     }
